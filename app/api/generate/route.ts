@@ -1,10 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001"
+const BACKEND_URL = process.env.BACKEND_URL || "https://sleft-signal.onrender.com"
 
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
+
+    console.log(`Making request to backend: ${BACKEND_URL}/api/generate`)
 
     // Forward request to backend
     const response = await fetch(`${BACKEND_URL}/api/generate`, {
@@ -16,7 +18,8 @@ export async function POST(request: NextRequest) {
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
+      const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+      console.error("Backend response error:", response.status, errorData)
       return NextResponse.json({ error: errorData.error || "Failed to generate brief" }, { status: response.status })
     }
 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import BriefDisplay from "@/components/brief-display"
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001"
+const BACKEND_URL = process.env.BACKEND_URL || "https://sleft-signal.onrender.com"
 
 interface BriefPageProps {
   params: Promise<{ id: string }>
@@ -9,10 +9,14 @@ interface BriefPageProps {
 
 async function getBrief(id: string) {
   try {
-    console.log(`Fetching brief from: ${BACKEND_URL}/api/briefs/${id}`)
+    const fetchUrl = `${BACKEND_URL}/api/briefs/${id}`
+    console.log(`Fetching brief from: ${fetchUrl}`)
     
-    const response = await fetch(`${BACKEND_URL}/api/briefs/${id}`, {
+    const response = await fetch(fetchUrl, {
       cache: "no-store", // Always fetch fresh data
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
 
     if (!response.ok) {
