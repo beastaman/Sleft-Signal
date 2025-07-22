@@ -1,14 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 const BACKEND_URL = process.env.BACKEND_URL || "https://sleft-signal.onrender.com"
 
 export async function POST(request: NextRequest) {
+  console.log("=== API Route Called ===")
+  console.log("BACKEND_URL:", BACKEND_URL)
+  
   try {
     const data = await request.json()
+    console.log("Form data received:", data)
 
-    console.log(`Making request to backend: ${BACKEND_URL}/api/generate`)
-
-    // Forward request to backend
     const response = await fetch(`${BACKEND_URL}/api/generate`, {
       method: "POST",
       headers: {
@@ -17,16 +18,25 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(data),
     })
 
+    console.log("Backend response status:", response.status)
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-      console.error("Backend response error:", response.status, errorData)
-      return NextResponse.json({ error: errorData.error || "Failed to generate brief" }, { status: response.status })
+      const errorText = await response.text()
+      console.error("Backend error:", errorText)
+      return NextResponse.json(
+        { error: `Backend error: ${response.status}` },
+        { status: response.status }
+      )
     }
 
     const result = await response.json()
     return NextResponse.json(result)
+
   } catch (error) {
-    console.error("Error generating brief:", error)
-    return NextResponse.json({ error: "Failed to generate brief" }, { status: 500 })
+    console.error("API Route Error:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
   }
 }
