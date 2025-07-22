@@ -50,7 +50,7 @@ const DefaultBellIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 type NavItem = {
   id: string | number
-  icon: React.ReactElement<any>
+  icon: React.ReactElement<React.SVGProps<SVGSVGElement>>
   label?: string
   onClick?: () => void
 }
