@@ -60,19 +60,18 @@ export default function GeneratePage() {
     location: "",
     customGoal: "",
   })
-  const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [error, setError] = useState("")
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError("")
     setCurrentStep(2)
 
     try {
-      const response = await fetch("http://localhost:3001/api/generate", {
+      // Use the frontend API route which will proxy to backend
+      const response = await fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,7 +82,7 @@ export default function GeneratePage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to generate brief")
+        throw new Error(data.error || "Failed to generate brief")
       }
 
       setCurrentStep(3)
@@ -95,8 +94,6 @@ export default function GeneratePage() {
       console.error("Error:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
       setCurrentStep(1)
-    } finally {
-      setIsLoading(false)
     }
   }
 
