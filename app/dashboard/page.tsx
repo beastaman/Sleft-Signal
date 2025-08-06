@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import DashboardStats from "@/components/dashboard/DashboardStats"
+import DashboardStats from "@/components/Dashboard/DashboardStats"
 
 export default function DashboardPage() {
   const { user } = useAuth()
