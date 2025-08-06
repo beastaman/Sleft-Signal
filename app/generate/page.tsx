@@ -70,6 +70,7 @@ export default function GeneratePage() {
     setCurrentStep(2)
 
     try {
+      console.log("Submitting form data:", formData)
       // Use the frontend API route which will proxy to backend
       const response = await fetch("/api/generate", {
         method: "POST",

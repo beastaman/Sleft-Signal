@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { useRouter } from "next/navigation"
 import {
   Share2,
   Download,
@@ -114,10 +115,15 @@ interface BriefDisplayProps {
 }
 
 export default function BriefDisplay({ brief }: BriefDisplayProps) {
+   const router = useRouter()
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<"brief" | "leads" | "competitors" | "news">("brief")
   const [selectedLeadType, setSelectedLeadType] = useState<string>("all")
   const [selectedNewsCategory, setSelectedNewsCategory] = useState<string>("all")
+
+  const handleJoinEliteNetwork = () => {
+    router.push('/auth')
+  }
 
   const handleShare = async () => {
     try {
@@ -866,7 +872,10 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                   partnerships, and growth opportunities that will accelerate your success beyond imagination.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                  <Button className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-bold px-12 py-6 text-xl">
+                   <Button 
+                    onClick={handleJoinEliteNetwork}
+                    className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-bold px-12 py-6 text-xl"
+                  >
                     <Shield className="w-6 h-6 mr-3" />
                     Join Elite Network
                     <ArrowRight className="w-6 h-6 ml-3" />
