@@ -32,7 +32,8 @@ import {
   TrendingDown,
   DollarSign,
   Shield,
-  Briefcase
+  Briefcase,
+  LucideIcon
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,6 +45,23 @@ interface DashboardSidebarProps {
   setIsOpen: (isOpen: boolean) => void;
 }
 
+// Define interfaces for menu items
+interface SubMenuItem {
+  name: string;
+  icon: LucideIcon;
+  path: string;
+}
+
+interface MenuItem {
+  name: string;
+  icon: LucideIcon;
+  path: string;
+  description: string;
+  isPremium?: boolean;
+  badge?: string;
+  subItems?: SubMenuItem[];
+}
+
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ isOpen, setIsOpen }) => {
   const pathname = usePathname();
   const router = useRouter();
@@ -53,7 +71,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ isOpen, setIsOpen }
   // Determine if we're on mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { 
       name: 'Dashboard', 
       icon: LayoutDashboard, 

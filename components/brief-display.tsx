@@ -303,7 +303,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
             {brief.businessData?.leads && (
               <Badge variant="outline" className="border-green-500/40 text-green-500 px-6 py-3 text-base">
                 <Users className="w-5 h-5 mr-2" />
-                {brief.businessData.leads.length} High-Quality Leads
+                {brief.businessData.leads.length} Potential Partners
               </Badge>
             )}
           </div>
@@ -357,7 +357,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                   }`}
                 >
                   <Users className="w-5 h-5" />
-                  High-Quality Leads
+                  Potential Partners
                   <Badge className="bg-green-500 text-white text-xs">{brief.businessData.leads.length}</Badge>
                 </button>
               )}
@@ -371,7 +371,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                   }`}
                 >
                   <BarChart3 className="w-5 h-5" />
-                  Market Analysis
+                  Local Network Opportunities
                 </button>
               )}
               {brief.newsData && brief.newsData.articles.length > 0 && (
@@ -384,7 +384,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                   }`}
                 >
                   <Newspaper className="w-5 h-5" />
-                  Industry Intelligence
+                  Business Intelligence
                   <Badge className="bg-blue-500 text-white text-xs">{brief.newsData.articles.length}</Badge>
                 </button>
               )}
@@ -625,7 +625,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
 
                     <h3 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
                       <Building2 className="w-8 h-8 text-yellow-500" />
-                      Top Competitors Analysis
+                      Top Local Network Analysis
                     </h3>
 
                     <div className="grid gap-8">
@@ -737,7 +737,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                           <Newspaper className="w-8 h-8 text-blue-500" />
                         </div>
                         <div>
-                          <CardTitle className="text-3xl font-bold text-white">Industry Intelligence Feed</CardTitle>
+                          <CardTitle className="text-3xl font-bold text-white">Business Intelligence Feed</CardTitle>
                           <p className="text-gray-400 text-lg">Latest trends, insights, and market developments</p>
                         </div>
                       </div>

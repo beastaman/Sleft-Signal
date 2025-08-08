@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Menu, X, Sparkles } from "lucide-react"
+import Link from "next/link"
 
 const links = [
   { name: "Home", id: "home" },
@@ -24,21 +25,22 @@ export function Navbar1() {
     <header className="flex justify-center w-full py-6 px-4">
       <div className="flex items-center justify-between px-6 py-3 bg-black/80 backdrop-blur-sm border border-yellow-500/20 rounded-full shadow-lg w-full max-w-4xl">
         {/* Brand */}
-        <motion.div
-          className="flex items-center gap-2 cursor-pointer"
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.3 }}
-          onClick={() => scrollTo("home")}
-        >
-          <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg grid place-items-center">
-            <Sparkles className="w-5 h-5 text-black" />
-          </div>
-          <span className="text-lg font-bold bg-gradient-to-r from-white to-yellow-500 bg-clip-text text-transparent">
-            Sleft Signals
-          </span>
-        </motion.div>
+        <Link href="/" passHref>
+          <motion.div
+            className="flex items-center gap-2 cursor-pointer"
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg grid place-items-center">
+              <Sparkles className="w-5 h-5 text-black" />
+            </div>
+            <span className="text-lg font-bold bg-gradient-to-r from-white to-yellow-500 bg-clip-text text-transparent">
+              Sleft Signals
+            </span>
+          </motion.div>
+        </Link>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">

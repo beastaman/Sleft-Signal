@@ -1,462 +1,285 @@
 "use client"
 
-import React, { useState } from 'react'
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { Eye, EyeOff, Mail, Lock, User, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export const AuthCard: React.FC = () => {
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [fullName, setFullName] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [focusedInput, setFocusedInput] = useState<string | null>(null)
-  const router = useRouter()
+export function AuthCard() {
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: ''
+  });
 
-  // For 3D card effect
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
-  const rotateX = useTransform(mouseY, [-300, 300], [10, -10])
-  const rotateY = useTransform(mouseX, [-300, 300], [-10, 10])
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    mouseX.set(e.clientX - rect.left - rect.width / 2)
-    mouseY.set(e.clientY - rect.top - rect.height / 2)
-  }
-
-  const handleMouseLeave = () => {
-    mouseX.set(0)
-    mouseY.set(0)
-  }
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-            }
-          }
-        })
-
-        if (error) throw error
-
-        if (data.user) {
-          toast.success('Account created successfully! Please check your email for verification.')
-          setIsSignUp(false)
-        }
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (error) throw error
-
-        if (data.user) {
-          toast.success('Welcome back!')
-          router.push('/dashboard')
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'An error occurred during authentication')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const getRedirectURL = () => {
+    // Use production URL in production, localhost in development
+    const baseURL = process.env.NODE_ENV === 'production' 
+      ? 'https://sleft-signal.vercel.app' 
+      : 'http://localhost:3000';
+    
+    return `${baseURL}/auth/callback`;
+  };
 
   const handleGoogleAuth = async () => {
     try {
+      setLoading(true);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: getRedirectURL(),
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
+      
+      // Don't show loading toast for OAuth as user will be redirected
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred with Google authentication')
+      console.error('Google auth error:', error);
+      toast.error(error.message || 'Failed to sign in with Google');
+      setLoading(false);
     }
-  }
+  };
+
+  const handleEmailAuth = async (type: 'login' | 'signup') => {
+    try {
+      setLoading(true);
+
+      if (type === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.fullName,
+            },
+            emailRedirectTo: getRedirectURL()
+          }
+        });
+
+        if (error) throw error;
+
+        toast.success('Check your email for the confirmation link!');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+
+        toast.success('Welcome back!');
+        // Redirect will be handled by AuthContext
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      toast.error(error.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8 }}
-      className="w-full max-w-sm relative z-10"
-      style={{ perspective: 1500 }}
+      transition={{ duration: 0.6 }}
+      className="w-full max-w-md mx-auto"
     >
-      <motion.div
-        className="relative"
-        style={{ rotateX, rotateY }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        whileHover={{ z: 10 }}
-      >
-        <div className="relative group">
-          {/* Card glow effect */}
-          <motion.div 
-            className="absolute -inset-[1px] rounded-2xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"
-            animate={{
-              boxShadow: [
-                "0 0 10px 2px rgba(251,191,36,0.1)",
-                "0 0 15px 5px rgba(251,191,36,0.2)",
-                "0 0 10px 2px rgba(251,191,36,0.1)"
-              ],
-              opacity: [0.2, 0.4, 0.2]
-            }}
-            transition={{ 
-              duration: 4, 
-              repeat: Infinity, 
-              ease: "easeInOut", 
-              repeatType: "mirror" 
-            }}
-          />
-
-          {/* Glass card background */}
-          <div className="relative bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 border border-yellow-500/20 shadow-2xl overflow-hidden">
-            <AnimatePresence mode="wait">
-              {!isSignUp ? (
-                <motion.div
-                  key="signin"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-6"
-                >
-                  {/* Logo and header */}
-                  <div className="text-center space-y-1">
-                    <motion.div
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", duration: 0.8 }}
-                      className="mx-auto w-12 h-12 rounded-full border border-yellow-500/20 flex items-center justify-center relative overflow-hidden bg-yellow-500/10"
-                    >
-                      <span className="text-xl font-bold text-yellow-500">S</span>
-                      <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-transparent opacity-50" />
-                    </motion.div>
-
-                    <motion.h1
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-xl font-bold bg-gradient-to-r from-white to-yellow-500 bg-clip-text text-transparent"
-                    >
-                      Welcome Back
-                    </motion.h1>
-                    
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="text-white/60 text-sm"
-                    >
-                      Sign in to continue to Sleft Signals
-                    </motion.p>
-                  </div>
-
-                  {/* Login form */}
-                  <form onSubmit={handleAuth} className="space-y-4">
-                    {/* Email input */}
-                    <motion.div 
-                      className={`relative ${focusedInput === "email" ? 'z-10' : ''}`}
-                      whileFocus={{ scale: 1.02 }}
-                      whileHover={{ scale: 1.01 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    >
-                      <div className="relative flex items-center">
-                        <Mail className={`absolute left-3 w-4 h-4 transition-all duration-300 ${
-                          focusedInput === "email" ? 'text-yellow-500' : 'text-white/40'
-                        }`} />
-                        
-                        <Input
-                          type="email"
-                          placeholder="Email address"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          onFocus={() => setFocusedInput("email")}
-                          onBlur={() => setFocusedInput(null)}
-                          className="w-full bg-gray-800/60 border-yellow-500/20 focus:border-yellow-500/50 text-white placeholder:text-white/40 h-11 pl-10 pr-3 focus:bg-gray-800/80"
-                          required
-                        />
-                      </div>
-                    </motion.div>
-
-                    {/* Password input */}
-                    <motion.div 
-                      className={`relative ${focusedInput === "password" ? 'z-10' : ''}`}
-                      whileFocus={{ scale: 1.02 }}
-                      whileHover={{ scale: 1.01 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    >
-                      <div className="relative flex items-center">
-                        <Lock className={`absolute left-3 w-4 h-4 transition-all duration-300 ${
-                          focusedInput === "password" ? 'text-yellow-500' : 'text-white/40'
-                        }`} />
-                        
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          onFocus={() => setFocusedInput("password")}
-                          onBlur={() => setFocusedInput(null)}
-                          className="w-full bg-gray-800/60 border-yellow-500/20 focus:border-yellow-500/50 text-white placeholder:text-white/40 h-11 pl-10 pr-10 focus:bg-gray-800/80"
-                          required
-                        />
-                        
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)} 
-                          className="absolute right-3 text-white/40 hover:text-yellow-500 transition-colors duration-300"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </motion.div>
-
-                    {/* Sign in button */}
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-black h-11 relative overflow-hidden group"
-                    >
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        {isLoading ? (
-                          <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            Sign In
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </>
-                        )}
-                      </span>
-                    </Button>
-
-                    {/* Divider */}
-                    <div className="relative flex items-center">
-                      <div className="flex-grow border-t border-white/10"></div>
-                      <span className="mx-3 text-sm text-white/40">or</span>
-                      <div className="flex-grow border-t border-white/10"></div>
-                    </div>
-
-                    {/* Social buttons */}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleGoogleAuth}
-                      className="w-full bg-gray-800/60 border-yellow-500/20 text-white hover:bg-gray-800/80 hover:border-yellow-500/40"
-                    >
-                      <span className="text-sm">Continue with Google</span>
-                    </Button>
-
-                    {/* Sign up link */}
-                    <p className="text-center text-sm text-white/60">
-                      Don't have an account?{' '}
-                      <button
-                        type="button"
-                        onClick={() => setIsSignUp(true)}
-                        className="text-yellow-500 hover:text-yellow-400 font-medium transition-colors"
-                      >
-                        Sign up
-                      </button>
-                    </p>
-                  </form>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="signup"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-6"
-                >
-                  {/* Logo and header */}
-                  <div className="text-center space-y-1">
-                    <motion.div
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", duration: 0.8 }}
-                      className="mx-auto w-12 h-12 rounded-full border border-yellow-500/20 flex items-center justify-center relative overflow-hidden bg-yellow-500/10"
-                    >
-                      <span className="text-xl font-bold text-yellow-500">S</span>
-                      <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-transparent opacity-50" />
-                    </motion.div>
-
-                    <motion.h1
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-xl font-bold bg-gradient-to-r from-white to-yellow-500 bg-clip-text text-transparent"
-                    >
-                      Create Account
-                    </motion.h1>
-                    
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="text-white/60 text-sm"
-                    >
-                      Join Sleft Signals and start growing
-                    </motion.p>
-                  </div>
-
-                  {/* Signup form */}
-                  <form onSubmit={handleAuth} className="space-y-4">
-                    {/* Full name input */}
-                    <motion.div 
-                      className={`relative ${focusedInput === "fullName" ? 'z-10' : ''}`}
-                      whileFocus={{ scale: 1.02 }}
-                      whileHover={{ scale: 1.01 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    >
-                      <div className="relative flex items-center">
-                        <User className={`absolute left-3 w-4 h-4 transition-all duration-300 ${
-                          focusedInput === "fullName" ? 'text-yellow-500' : 'text-white/40'
-                        }`} />
-                        
-                        <Input
-                          type="text"
-                          placeholder="Full name"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          onFocus={() => setFocusedInput("fullName")}
-                          onBlur={() => setFocusedInput(null)}
-                          className="w-full bg-gray-800/60 border-yellow-500/20 focus:border-yellow-500/50 text-white placeholder:text-white/40 h-11 pl-10 pr-3 focus:bg-gray-800/80"
-                          required
-                        />
-                      </div>
-                    </motion.div>
-
-                    {/* Email input */}
-                    <motion.div 
-                      className={`relative ${focusedInput === "email" ? 'z-10' : ''}`}
-                      whileFocus={{ scale: 1.02 }}
-                      whileHover={{ scale: 1.01 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    >
-                      <div className="relative flex items-center">
-                        <Mail className={`absolute left-3 w-4 h-4 transition-all duration-300 ${
-                          focusedInput === "email" ? 'text-yellow-500' : 'text-white/40'
-                        }`} />
-                        
-                        <Input
-                          type="email"
-                          placeholder="Email address"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          onFocus={() => setFocusedInput("email")}
-                          onBlur={() => setFocusedInput(null)}
-                          className="w-full bg-gray-800/60 border-yellow-500/20 focus:border-yellow-500/50 text-white placeholder:text-white/40 h-11 pl-10 pr-3 focus:bg-gray-800/80"
-                          required
-                        />
-                      </div>
-                    </motion.div>
-
-                    {/* Password input */}
-                    <motion.div 
-                      className={`relative ${focusedInput === "password" ? 'z-10' : ''}`}
-                      whileFocus={{ scale: 1.02 }}
-                      whileHover={{ scale: 1.01 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    >
-                      <div className="relative flex items-center">
-                        <Lock className={`absolute left-3 w-4 h-4 transition-all duration-300 ${
-                          focusedInput === "password" ? 'text-yellow-500' : 'text-white/40'
-                        }`} />
-                        
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          onFocus={() => setFocusedInput("password")}
-                          onBlur={() => setFocusedInput(null)}
-                          className="w-full bg-gray-800/60 border-yellow-500/20 focus:border-yellow-500/50 text-white placeholder:text-white/40 h-11 pl-10 pr-10 focus:bg-gray-800/80"
-                          required
-                        />
-                        
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)} 
-                          className="absolute right-3 text-white/40 hover:text-yellow-500 transition-colors duration-300"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </motion.div>
-
-                    {/* Sign up button */}
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-black h-11 relative overflow-hidden group"
-                    >
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        {isLoading ? (
-                          <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            Create Account
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </>
-                        )}
-                      </span>
-                    </Button>
-
-                    {/* Divider */}
-                    <div className="relative flex items-center">
-                      <div className="flex-grow border-t border-white/10"></div>
-                      <span className="mx-3 text-sm text-white/40">or</span>
-                      <div className="flex-grow border-t border-white/10"></div>
-                    </div>
-
-                    {/* Social buttons */}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleGoogleAuth}
-                      className="w-full bg-gray-800/60 border-yellow-500/20 text-white hover:bg-gray-800/80 hover:border-yellow-500/40"
-                    >
-                      <span className="text-sm">Continue with Google</span>
-                    </Button>
-
-                    {/* Sign in link */}
-                    <p className="text-center text-sm text-white/60">
-                      Already have an account?{' '}
-                      <button
-                        type="button"
-                        onClick={() => setIsSignUp(false)}
-                        className="text-yellow-500 hover:text-yellow-400 font-medium transition-colors"
-                      >
-                        Sign in
-                      </button>
-                    </p>
-                  </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
+      <Card className="bg-gray-900/80 backdrop-blur-xl border-yellow-500/20 shadow-2xl">
+        <CardHeader className="text-center pb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="w-8 h-8 text-black" />
           </div>
-        </div>
-      </motion.div>
+          <CardTitle className="text-2xl font-bold text-white">
+            Welcome to Sleft Signals
+          </CardTitle>
+          <p className="text-gray-400">
+            Your AI-powered business intelligence platform
+          </p>
+        </CardHeader>
+
+        <CardContent className="pt-0">
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-800/50 mb-6">
+              <TabsTrigger 
+                value="login" 
+                className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-white"
+              >
+                Sign In
+              </TabsTrigger>
+              <TabsTrigger 
+                value="signup" 
+                className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-white"
+              >
+                Sign Up
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="login" className="space-y-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-yellow-500" />
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="bg-black/50 border-yellow-500/30 text-white placeholder:text-gray-400 focus:border-yellow-500"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-white flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-yellow-500" />
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      className="bg-black/50 border-yellow-500/30 text-white placeholder:text-gray-400 focus:border-yellow-500 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => handleEmailAuth('login')}
+                  disabled={loading || !formData.email || !formData.password}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-semibold py-3"
+                >
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="signup" className="space-y-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-white flex items-center gap-2">
+                    <User className="w-4 h-4 text-yellow-500" />
+                    Full Name
+                  </Label>
+                  <Input
+                    id="fullName"
+                    placeholder="Enter your full name"
+                    value={formData.fullName}
+                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                    className="bg-black/50 border-yellow-500/30 text-white placeholder:text-gray-400 focus:border-yellow-500"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email-signup" className="text-white flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-yellow-500" />
+                    Email
+                  </Label>
+                  <Input
+                    id="email-signup"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="bg-black/50 border-yellow-500/30 text-white placeholder:text-gray-400 focus:border-yellow-500"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password-signup" className="text-white flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-yellow-500" />
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password-signup"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      className="bg-black/50 border-yellow-500/30 text-white placeholder:text-gray-400 focus:border-yellow-500 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => handleEmailAuth('signup')}
+                  disabled={loading || !formData.email || !formData.password || !formData.fullName}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-semibold py-3"
+                >
+                  {loading ? 'Creating account...' : 'Create Account'}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-900 text-gray-400">Or continue with</span>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleGoogleAuth}
+            disabled={loading}
+            variant="outline"
+            className="w-full border-yellow-500/30 text-white hover:bg-yellow-500/10 bg-transparent py-3"
+          >
+            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            {loading ? 'Connecting...' : 'Continue with Google'}
+          </Button>
+        </CardContent>
+      </Card>
     </motion.div>
-  )
+  );
 }
