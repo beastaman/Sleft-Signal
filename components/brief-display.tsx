@@ -17,23 +17,27 @@ import {
   Star,
   MapPin,
   Calendar,
-  BarChart3,
-  Zap,
-  Target,
+  Clock,
+  Users2,
   ExternalLink,
-  CheckCircle2,
+  Ticket,
+  Wifi,
+  Coffee,
+  Filter,
   Phone,
   Mail,
   Eye,
-  Filter,
-  CheckCircle,
-  Newspaper,
+  BarChart3,
+  Zap,
+  Target,
   Lightbulb,
   Rocket,
   Shield,
   ThumbsUp,
   ThumbsDown,
   Minus,
+  CheckCircle,
+  Newspaper,
 } from "lucide-react"
 import { useState } from "react"
 import Image from "next/image"
@@ -52,8 +56,12 @@ interface Lead {
   leadType: string
   potentialValue: number
   contactReason: string
+  priceLevel?: string
+  openingHours?: any[]
+  neighborhood?: string
   imageUrl?: string
   location?: { lat: number; lng: number }
+  googleMapsUrl?: string
 }
 
 interface NewsArticle {
@@ -68,6 +76,25 @@ interface NewsArticle {
   category: string
   sentiment: string
   keyInsights: string[]
+  isRssLink?: boolean
+}
+
+interface MeetupEvent {
+  id: string
+  title: string
+  description: string
+  date: string
+  type: string
+  address: string
+  url: string
+  organizer: string
+  maxAttendees: number
+  actualAttendees: number
+  relevanceScore: number
+  category: string
+  networkingValue: number
+  personalizedReason: string
+  actionableSteps: string[]
 }
 
 interface Brief {
@@ -87,6 +114,7 @@ interface Brief {
       imageUrl?: string
       priceLevel?: string
       openingHours?: any[]
+      googleMapsUrl?: string
     }>
     leads: Lead[]
     marketAnalysis: {
@@ -102,11 +130,27 @@ interface Brief {
     categorized: Record<string, NewsArticle[]>
     totalFound: number
     lastUpdated: string
+    urlMetrics?: {
+      directUrls: number
+      rssUrls: number
+    }
   }
   metadata: {
     industry: string
     location: string
     websiteUrl: string
+  }
+  meetupData?: {
+    events: MeetupEvent[]
+    categorized: Record<string, MeetupEvent[]>
+    totalFound: number
+    lastUpdated: string
+    searchSummary: {
+      keywords: string[]
+      location: string
+      industry: string
+      hasCustomGoal: boolean
+    }
   }
 }
 
@@ -115,11 +159,12 @@ interface BriefDisplayProps {
 }
 
 export default function BriefDisplay({ brief }: BriefDisplayProps) {
-   const router = useRouter()
+  const router = useRouter()
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<"brief" | "leads" | "competitors" | "news">("brief")
+  const [activeTab, setActiveTab] = useState<"brief" | "leads" | "competitors" | "news" | "events">("brief")
   const [selectedLeadType, setSelectedLeadType] = useState<string>("all")
   const [selectedNewsCategory, setSelectedNewsCategory] = useState<string>("all")
+  const [selectedEventCategory, setSelectedEventCategory] = useState<string>("all")
 
   const handleJoinEliteNetwork = () => {
     router.push('/auth')
@@ -248,8 +293,33 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
       ? brief.newsData?.articles || []
       : brief.newsData?.categorized?.[selectedNewsCategory] || []
 
+  const filteredEvents =
+    selectedEventCategory === "all"
+      ? brief.meetupData?.events || []
+      : brief.meetupData?.categorized?.[selectedEventCategory] || []
+
   const leadTypes = [...new Set(brief.businessData?.leads?.map((lead) => lead.leadType) || [])]
   const newsCategories = Object.keys(brief.newsData?.categorized || {})
+  const eventCategories = Object.keys(brief.meetupData?.categorized || {})
+
+  const formatEventDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return {
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      dayOfWeek: date.toLocaleDateString('en-US', { weekday: 'long' })
+    }
+  }
+
+  const getEventTypeIcon = (type: string) => {
+    return type === "ONLINE" ? <Wifi className="w-4 h-4" /> : <Coffee className="w-4 h-4" />
+  }
+
+  const getEventTypeColor = (type: string) => {
+    return type === "ONLINE" 
+      ? "border-blue-500/40 text-blue-400 bg-blue-500/10" 
+      : "border-green-500/40 text-green-400 bg-green-500/10"
+  }
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -314,7 +384,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
               variant="outline"
               className="border-gray-700 text-white hover:bg-gray-800 bg-transparent px-8 py-4 text-lg"
             >
-              {copied ? <CheckCircle2 className="w-5 h-5 mr-2" /> : <Share2 className="w-5 h-5 mr-2" />}
+              {copied ? <CheckCircle className="w-5 h-5 mr-2" /> : <Share2 className="w-5 h-5 mr-2" />}
               {copied ? "Copied!" : "Share Brief"}
             </Button>
             <Button
@@ -386,6 +456,20 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                   <Newspaper className="w-5 h-5" />
                   Business Intelligence
                   <Badge className="bg-blue-500 text-white text-xs">{brief.newsData.articles.length}</Badge>
+                </button>
+              )}
+              {brief.meetupData && brief.meetupData.events.length > 0 && (
+                <button
+                  onClick={() => setActiveTab("events")}
+                  className={`px-8 py-4 rounded-2xl text-base font-semibold transition-all duration-300 flex items-center gap-3 ${
+                    activeTab === "events"
+                      ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg"
+                      : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                  }`}
+                >
+                  <Users2 className="w-5 h-5" />
+                  Networking Events
+                  <Badge className="bg-purple-500 text-white text-xs">{brief.meetupData.events.length}</Badge>
                 </button>
               )}
             </div>
@@ -517,32 +601,68 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                             <div className="flex gap-4">
                               {lead.phone && (
                                 <Button
+                                  asChild
                                   variant="outline"
                                   size="sm"
                                   className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
                                 >
-                                  <Phone className="w-4 h-4 mr-2" />
-                                  {lead.phone}
+                                  <a href={`tel:${lead.phone}`}>
+                                    <Phone className="w-4 h-4 mr-2" />
+                                    {lead.phone}
+                                  </a>
                                 </Button>
                               )}
                               {lead.email && (
                                 <Button
+                                  asChild
                                   variant="outline"
                                   size="sm"
                                   className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
                                 >
-                                  <Mail className="w-4 h-4 mr-2" />
-                                  Contact
+                                  <a href={`mailto:${lead.email}`}>
+                                    <Mail className="w-4 h-4 mr-2" />
+                                    Contact
+                                  </a>
                                 </Button>
                               )}
                               {lead.website && (
                                 <Button
+                                  asChild
                                   variant="outline"
                                   size="sm"
                                   className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
                                 >
-                                  <ExternalLink className="w-4 h-4 mr-2" />
-                                  Website
+                                  <a 
+                                    href={lead.website} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    onClick={() => {
+                                      console.log(`User visited website: ${lead.businessName} - ${lead.website}`)
+                                    }}
+                                  >
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    Website
+                                  </a>
+                                </Button>
+                              )}
+                              {lead.googleMapsUrl && (
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-blue-600 text-blue-300 hover:text-white bg-transparent"
+                                >
+                                  <a 
+                                    href={lead.googleMapsUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    onClick={() => {
+                                      console.log(`User viewed Google Maps: ${lead.businessName}`)
+                                    }}
+                                  >
+                                    <MapPin className="w-4 h-4 mr-2" />
+                                    View on Maps
+                                  </a>
                                 </Button>
                               )}
                             </div>
@@ -551,6 +671,35 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                               <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
                           </div>
+
+                          {/* ADD ADDITIONAL INFO SECTION */}
+                          {(lead.priceLevel || lead.openingHours || lead.neighborhood) && (
+                            <>
+                              <Separator className="my-6 bg-gray-700" />
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {lead.priceLevel && (
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="border-green-500/40 text-green-400 bg-green-500/10">
+                                      {lead.priceLevel}
+                                    </Badge>
+                                    <span className="text-gray-400 text-sm">Price Range</span>
+                                  </div>
+                                )}
+                                {lead.neighborhood && (
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-gray-400" />
+                                    <span className="text-gray-300">{lead.neighborhood}</span>
+                                  </div>
+                                )}
+                                {lead.openingHours && lead.openingHours.length > 0 && (
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-gray-400" />
+                                    <span className="text-gray-300">Hours Available</span>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </motion.div>
                       ))}
                     </div>
@@ -686,22 +835,52 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                           <div className="flex gap-3 pt-6 border-t border-gray-700">
                             {competitor.website && (
                               <Button
+                                asChild
                                 variant="outline"
                                 size="sm"
                                 className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
                               >
-                                <ExternalLink className="w-4 h-4 mr-2" />
-                                Website
+                                <a 
+                                  href={competitor.website} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    console.log(`User visited competitor website: ${competitor.title} - ${competitor.website}`)
+                                  }}
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  Website
+                                </a>
                               </Button>
                             )}
                             {competitor.phone && (
                               <Button
+                                asChild
                                 variant="outline"
                                 size="sm"
                                 className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
                               >
-                                <Phone className="w-4 h-4 mr-2" />
-                                {competitor.phone}
+                                <a href={`tel:${competitor.phone}`}>
+                                  <Phone className="w-4 h-4 mr-2" />
+                                  {competitor.phone}
+                                </a>
+                              </Button>
+                            )}
+                            {competitor.googleMapsUrl && (
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-600 text-blue-300 hover:text-white bg-transparent"
+                              >
+                                <a 
+                                  href={competitor.googleMapsUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                >
+                                  <MapPin className="w-4 h-4 mr-2" />
+                                  View on Maps
+                                </a>
                               </Button>
                             )}
                             <Button
@@ -739,6 +918,20 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                         <div>
                           <CardTitle className="text-3xl font-bold text-white">Business Intelligence Feed</CardTitle>
                           <p className="text-gray-400 text-lg">Latest trends, insights, and market developments</p>
+                          
+                          {/* ADD URL METRICS DISPLAY */}
+                          {brief.newsData.urlMetrics && (
+                            <div className="flex items-center gap-4 mt-2 text-sm">
+                              <span className="text-green-400">
+                                ✓ {brief.newsData.urlMetrics.directUrls} Direct Links
+                              </span>
+                              {brief.newsData.urlMetrics.rssUrls > 0 && (
+                                <span className="text-yellow-400">
+                                  ⚠ {brief.newsData.urlMetrics.rssUrls} RSS Links
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       {newsCategories.length > 1 && (
@@ -795,12 +988,45 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                                   <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
                                     Score: {article.relevanceScore}
                                   </Badge>
+                                  
+                                  {/* ADD URL TYPE INDICATOR */}
+                                  {article.isRssLink ? (
+                                    <Badge variant="outline" className="border-yellow-500/40 text-yellow-400 bg-yellow-500/10">
+                                      <ExternalLink className="w-3 h-3 mr-1" />
+                                      RSS Link
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="border-green-500/40 text-green-400 bg-green-500/10">
+                                      <ExternalLink className="w-3 h-3 mr-1" />
+                                      Direct Link
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
 
-                              <h3 className="font-bold text-white text-xl mb-4 leading-tight group-hover:text-blue-400 transition-colors">
-                                {article.title}
-                              </h3>
+                              {/* MAKE TITLE CLICKABLE */}
+                              {article.url && article.url !== "#" ? (
+                                <a 
+                                  href={article.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    console.log(`User clicked article: ${article.title} - ${article.url}`)
+                                    // Track if it's RSS vs direct link
+                                    console.log(`Link type: ${article.isRssLink ? 'RSS' : 'Direct'}`)
+                                  }}
+                                  className="block"
+                                >
+                                  <h3 className="font-bold text-white text-xl mb-4 leading-tight group-hover:text-blue-400 transition-colors cursor-pointer">
+                                    {article.title}
+                                    <ExternalLink className="w-4 h-4 inline ml-2 opacity-60" />
+                                  </h3>
+                                </a>
+                              ) : (
+                                <h3 className="font-bold text-white text-xl mb-4 leading-tight">
+                                  {article.title}
+                                </h3>
+                              )}
 
                               <p className="text-gray-300 mb-4 leading-relaxed">{article.description}</p>
 
@@ -829,21 +1055,316 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                                     {new Date(article.published).toLocaleDateString()}
                                   </span>
                                 </div>
-                                {article.url && (
+                                
+                                {/* ENHANCED READ ARTICLE BUTTON */}
+                                {article.url && article.url !== "#" ? (
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className={`${
+                                      article.isRssLink 
+                                        ? "border-yellow-600 text-yellow-300 hover:text-white bg-transparent" 
+                                        : "border-gray-600 text-gray-300 hover:text-white bg-transparent"
+                                    }`}
+                                  >
+                                    <a 
+                                      href={article.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      onClick={() => {
+                                        console.log(`User clicked read article: ${article.title}`)
+                                        console.log(`Article URL: ${article.url}`)
+                                        console.log(`Link type: ${article.isRssLink ? 'RSS (may redirect)' : 'Direct article'}`)
+                                      }}
+                                    >
+                                      <ExternalLink className="w-4 h-4 mr-2" />
+                                      {article.isRssLink ? "Read Article (via RSS)" : "Read Full Article"}
+                                    </a>
+                                  </Button>
+                                ) : (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
+                                    className="border-gray-600 text-gray-500 bg-transparent cursor-not-allowed"
+                                    disabled
                                   >
                                     <ExternalLink className="w-4 h-4 mr-2" />
-                                    Read Full Article
+                                    Link Unavailable
                                   </Button>
                                 )}
                               </div>
+
+                              {/* ADD SOURCE WEBSITE LINK */}
+                              {article.sourceUrl && article.sourceUrl !== article.url && (
+                                <div className="mt-3 pt-3 border-t border-gray-700">
+                                  <Button
+                                    asChild
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-500 hover:text-gray-300 p-0 h-auto"
+                                  >
+                                    <a 
+                                      href={article.sourceUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-xs"
+                                    >
+                                      <Newspaper className="w-3 h-3" />
+                                      Visit {article.source}
+                                    </a>
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </motion.div>
                       ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {activeTab === "events" && brief.meetupData && (
+              <motion.div
+                key="events"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.6 }}
+              >
+                <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 border-gray-700 backdrop-blur-sm shadow-2xl">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center">
+                          <Users2 className="w-8 h-8 text-purple-500" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-3xl font-bold text-white">Networking Events & Meetups</CardTitle>
+                          <p className="text-gray-400 text-lg">
+                            Strategic networking opportunities to grow your business connections
+                          </p>
+                        </div>
+                      </div>
+                      {eventCategories.length > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Filter className="w-4 h-4 text-gray-400" />
+                          <select
+                            value={selectedEventCategory}
+                            onChange={(e) => setSelectedEventCategory(e.target.value)}
+                            className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                          >
+                            <option value="all">All Categories</option>
+                            {eventCategories.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Search Summary */}
+                    <div className="mb-8 p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl border border-purple-500/20">
+                      <div className="flex items-center gap-3 mb-4">
+                        <Lightbulb className="w-6 h-6 text-purple-500" />
+                        <h3 className="text-xl font-bold text-white">Search Insights</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-400">Keywords:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {brief.meetupData.searchSummary.keywords.map((keyword, i) => (
+                              <Badge key={i} variant="outline" className="border-purple-500/40 text-purple-400 bg-purple-500/10">
+                                {keyword}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Location:</span>
+                          <p className="text-white font-medium">{brief.meetupData.searchSummary.location}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Total Found:</span>
+                          <p className="text-white font-medium">{brief.meetupData.totalFound} events</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-8">
+                      {filteredEvents.map((event, index) => {
+                        const eventDateTime = formatEventDate(event.date)
+                        return (
+                          <motion.div
+                            key={event.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: index * 0.1 }}
+                            className="border border-gray-700 rounded-3xl p-8 bg-gradient-to-r from-gray-800/50 to-gray-900/50 hover:border-purple-500/30 transition-all duration-300 group"
+                          >
+                            <div className="flex justify-between items-start mb-6">
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between mb-4">
+                                  <div>
+                                    <h3 className="font-bold text-white text-2xl mb-3 group-hover:text-purple-400 transition-colors">
+                                      {event.title}
+                                    </h3>
+                                    <div className="flex items-center gap-4 mb-4">
+                                      <Badge variant="outline" className="border-purple-500/40 text-purple-400 bg-purple-500/10">
+                                        {event.category}
+                                      </Badge>
+                                      <Badge variant="outline" className={getEventTypeColor(event.type)}>
+                                        {getEventTypeIcon(event.type)}
+                                        <span className="ml-1">{event.type.replace('_', ' ')}</span>
+                                      </Badge>
+                                      <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                                        {event.relevanceScore}% Match
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-2xl font-bold text-purple-500 mb-1">
+                                      ${event.networkingValue.toLocaleString()}
+                                    </div>
+                                    <p className="text-gray-400 text-sm">Networking Value</p>
+                                  </div>
+                                </div>
+
+                                <p className="text-gray-300 mb-6 leading-relaxed">{event.description}</p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                      <Calendar className="w-5 h-5 text-blue-500" />
+                                    </div>
+                                    <div>
+                                      <p className="text-white font-medium">{eventDateTime.dayOfWeek}</p>
+                                      <p className="text-gray-400 text-sm">{eventDateTime.date}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                                      <Clock className="w-5 h-5 text-green-500" />
+                                    </div>
+                                    <div>
+                                      <p className="text-white font-medium">{eventDateTime.time}</p>
+                                      <p className="text-gray-400 text-sm">Local Time</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
+                                      <Users className="w-5 h-5 text-orange-500" />
+                                    </div>
+                                    <div>
+                                      <p className="text-white font-medium">{event.actualAttendees}/{event.maxAttendees}</p>
+                                      <p className="text-gray-400 text-sm">Attendees</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-start gap-3 mb-6">
+                                  <MapPin className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-white font-medium">{event.organizer}</p>
+                                    <p className="text-gray-400 text-sm">{event.address}</p>
+                                  </div>
+                                </div>
+
+                                <div className="bg-gray-800/50 rounded-2xl p-6 mb-6">
+                                  <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
+                                    <Target className="w-4 h-4 text-purple-500" />
+                                    Why This Event is Perfect for You
+                                  </h4>
+                                  <p className="text-gray-300 leading-relaxed">{event.personalizedReason}</p>
+                                </div>
+
+                                {event.actionableSteps.length > 0 && (
+                                  <div className="bg-purple-500/10 rounded-2xl p-6 mb-6 border border-purple-500/20">
+                                    <h4 className="font-semibold text-white mb-4 flex items-center gap-2">
+                                      <Rocket className="w-4 h-4 text-purple-500" />
+                                      Action Steps
+                                    </h4>
+                                    <div className="space-y-2">
+                                      {event.actionableSteps.map((step, i) => (
+                                        <div key={i} className="flex items-start gap-3">
+                                          <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <span className="text-purple-400 text-sm font-bold">{i + 1}</span>
+                                          </div>
+                                          <p className="text-gray-300">{step}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <Separator className="my-6 bg-gray-700" />
+
+                            <div className="flex justify-between items-center">
+                              <div className="flex gap-3">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
+                                >
+                                  <Calendar className="w-4 h-4 mr-2" />
+                                  Add to Calendar
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
+                                >
+                                  <Users className="w-4 h-4 mr-2" />
+                                  View Attendees
+                                </Button>
+                              </div>
+                              {event.url && event.url !== "#" && (
+                                <Button
+                                  asChild
+                                  className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
+                                  onClick={() => {
+                                    // Optional: Track click analytics
+                                    console.log(`User clicked event: ${event.title}`)
+                                  }}
+                                >
+                                  <a 
+                                    href={event.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center"
+                                  >
+                                    <Ticket className="w-4 h-4 mr-2" />
+                                    Register Now
+                                    <ExternalLink className="w-4 h-4 ml-2" />
+                                  </a>
+                                </Button>
+                              )}
+                              {/* If no URL available, show alternative */}
+                              {(!event.url || event.url === "#") && (
+                                <Button
+                                  variant="outline"
+                                  className="border-gray-600 text-gray-300 hover:text-white bg-transparent"
+                                  onClick={() => {
+                                    window.open(`https://www.meetup.com/find/?keywords=${encodeURIComponent(event.title)}`, '_blank')
+                                  }}
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  Find on Meetup
+                                </Button>
+                              )}
+                            </div>
+                          </motion.div>
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>

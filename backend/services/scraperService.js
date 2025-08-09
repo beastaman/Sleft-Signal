@@ -345,20 +345,23 @@ function processPersonalizedData(allResults, userProfile) {
       rating: item.totalScore || 0,
       reviewsCount: item.reviewsCount || 0,
       category: item.categoryName || industry,
-      website: item.website || null,
-      phone: item.phone || null,
+      website: cleanAndValidateWebsiteUrl(item.website), // IMPROVED URL HANDLING
+      phone: item.phone || item.phoneUnformatted || null,
       location: item.location || null,
       priceLevel: item.price || null,
       openingHours: item.openingHours || null,
       imageUrl: item.imageUrl || null,
       placeId: item.placeId || null,
-      competitorType: "Direct Competitor"
+      googleMapsUrl: item.url || generateGoogleMapsUrl(item), // ADD GOOGLE MAPS URL
+      competitorType: "Direct Competitor",
+      neighborhood: item.neighborhood || null,
+      additionalInfo: item.additionalInfo || null
     }))
 
   // Generate hyper-personalized leads
   const potentialLeads = uniqueResults
     .filter(item => 
-      item.totalScore >= 3.0 && // Lowered threshold for more opportunities
+      item.totalScore >= 3.0 &&
       item.title && 
       item.title.length > 3 &&
       !isDirectCompetitor(item, industry)
@@ -372,8 +375,8 @@ function processPersonalizedData(allResults, userProfile) {
         businessName: item.title,
         contactPerson: generateContactPerson(item, leadType),
         email: generateBusinessEmail(item),
-        phone: item.phone || null,
-        website: item.website || null,
+        phone: item.phone || item.phoneUnformatted || null, // Use both phone fields
+        website: cleanAndValidateWebsiteUrl(item.website), // IMPROVED URL HANDLING
         address: item.address || "Address not available",
         rating: item.totalScore || 0,
         reviewsCount: item.reviewsCount || 0,
@@ -389,7 +392,17 @@ function processPersonalizedData(allResults, userProfile) {
         location: item.location || null,
         priority: calculatePersonalizedPriority(item, userProfile),
         searchStrategy: item.searchStrategy || "general",
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        // ADD ADDITIONAL GOOGLE MAPS DATA
+        placeId: item.placeId || null,
+        googleMapsUrl: item.url || generateGoogleMapsUrl(item), // Direct Google Maps URL
+        priceLevel: item.price || null,
+        openingHours: item.openingHours || null,
+        additionalInfo: item.additionalInfo || null,
+        neighborhood: item.neighborhood || null,
+        city: item.city || null,
+        state: item.state || null,
+        postalCode: item.postalCode || null
       }
     })
     .sort((a, b) => {
@@ -602,22 +615,31 @@ function generateActionableSteps(item, userProfile) {
   
   const steps = []
 
-  // Research step
-  if (item.website) {
+  // Research step with proper website URL
+  if (item.website && cleanAndValidateWebsiteUrl(item.website)) {
     steps.push(`Research ${targetBusiness}'s services and recent developments on their website`)
   } else {
     steps.push(`Research ${targetBusiness} online to understand their business model and services`)
   }
 
-  // Contact preparation
-  if (item.phone) {
-    steps.push(`Prepare a brief introduction of ${businessName} and call ${item.phone}`)
+  // Contact preparation with actual phone number
+  if (item.phone || item.phoneUnformatted) {
+    const phone = item.phone || item.phoneUnformatted
+    steps.push(`Prepare a brief introduction of ${businessName} and call ${phone}`)
   }
-  if (generateBusinessEmail(item)) {
-    steps.push(`Send a personalized email introduction to ${generateBusinessEmail(item)}`)
+  
+  // Email contact with generated email
+  const email = generateBusinessEmail(item)
+  if (email) {
+    steps.push(`Send a personalized email introduction to ${email}`)
   }
 
-  // Meeting proposal
+  // Google Maps research
+  if (item.placeId || item.url) {
+    steps.push(`View their Google Maps profile for reviews and additional insights`)
+  }
+
+  // Meeting proposal based on lead type
   if (leadType.includes("Partner")) {
     steps.push(`Propose a brief meeting to discuss partnership opportunities`)
   } else {
@@ -627,7 +649,7 @@ function generateActionableSteps(item, userProfile) {
   // Follow-up
   steps.push(`Follow up within 48 hours with specific value propositions`)
 
-  return steps.slice(0, 3) // Limit to 3 actionable steps
+  return steps.slice(0, 4) // Limit to 4 actionable steps
 }
 
 function calculatePersonalizationScore(item, userProfile) {
@@ -793,55 +815,70 @@ function generateContactPerson(item, leadType) {
   return personTitles[leadType] || "Business Owner"
 }
 
+function cleanAndValidateWebsiteUrl(url) {
+  if (!url || url === "#" || url === "") {
+    return null
+  }
+  
+  // Clean the URL
+  url = url.trim()
+  
+  // Remove any Google redirect URLs
+  if (url.includes('google.com/url?')) {
+    try {
+      const urlParams = new URLSearchParams(url.split('?')[1])
+      const actualUrl = urlParams.get('url') || urlParams.get('q')
+      if (actualUrl) {
+        url = decodeURIComponent(actualUrl)
+      }
+    } catch (e) {
+      console.warn('Failed to extract URL from Google redirect:', e)
+    }
+  }
+  
+  // Ensure URL has protocol
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url
+  }
+  
+  // Validate URL format
+  try {
+    const validUrl = new URL(url)
+    // Additional validation - ensure it's not a Google Maps URL masquerading as website
+    if (validUrl.hostname.includes('google.com') && validUrl.pathname.includes('/maps')) {
+      return null
+    }
+    return validUrl.toString()
+  } catch {
+    return null
+  }
+}
+
+function generateGoogleMapsUrl(item) {
+  if (item.placeId) {
+    return `https://www.google.com/maps/place/?q=place_id:${item.placeId}`
+  }
+  if (item.title && item.address) {
+    const query = encodeURIComponent(`${item.title} ${item.address}`)
+    return `https://www.google.com/maps/search/${query}`
+  }
+  return null
+}
+
 function generateBusinessEmail(item) {
   if (!item.website) return null
   
   try {
-    const domain = item.website.replace(/https?:\/\//, "").replace(/\/$/, "").split('/')[0]
+    const cleanWebsite = cleanAndValidateWebsiteUrl(item.website)
+    if (!cleanWebsite) return null
+    
+    const domain = new URL(cleanWebsite).hostname.replace('www.', '')
     const emailPrefixes = ["info", "contact", "hello", "business", "sales", "partnerships"]
     const randomPrefix = emailPrefixes[Math.floor(Math.random() * emailPrefixes.length)]
     return `${randomPrefix}@${domain}`
   } catch {
     return null
   }
-}
-
-function estimatePersonalizedValue(item, userProfile) {
-  const { industry } = userProfile
-  
-  // Industry-specific base values
-  const industryMultipliers = {
-    "restaurant & food service": 2500,
-    "retail & e-commerce": 3500,
-    "professional services": 4500,
-    "healthcare & medical": 5500,
-    "fitness & wellness": 2000,
-    "beauty & personal care": 2200,
-    "real estate": 6000,
-    "technology & software": 7500,
-    "manufacturing": 8000,
-    "automotive": 4000,
-    "education & training": 3000,
-    "financial services": 9000,
-    "legal services": 7000,
-    "marketing & advertising": 4500,
-    "construction": 5000
-  }
-
-  const baseValue = industryMultipliers[industry.toLowerCase()] || 3000
-  
-  // Personalization multipliers
-  const personalizationScore = calculatePersonalizationScore(item, userProfile)
-  const personalizationMultiplier = 1 + (personalizationScore / 100)
-  
-  // Quality multipliers
-  const ratingMultiplier = item.totalScore ? (item.totalScore / 5) + 0.3 : 1
-  const reviewMultiplier = item.reviewsCount ? Math.min((item.reviewsCount / 50) + 1, 2.5) : 1
-  const digitalMultiplier = (item.website ? 1.4 : 1) * (item.phone ? 1.3 : 1)
-
-  const finalValue = baseValue * personalizationMultiplier * ratingMultiplier * reviewMultiplier * digitalMultiplier
-
-  return Math.round(finalValue)
 }
 
 function generatePersonalizedInsights(results, userProfile) {

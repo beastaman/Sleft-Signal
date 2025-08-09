@@ -59,6 +59,7 @@ export default function GeneratePage() {
     industry: "",
     location: "",
     customGoal: "",
+    networkingKeyword: "", // New field for meetup events
   })
   const [currentStep, setCurrentStep] = useState(1)
   const [error, setError] = useState("")
@@ -328,6 +329,24 @@ export default function GeneratePage() {
                           rows={3}
                           className="bg-black/50 border-yellow-500/30 text-white placeholder:text-gray-400 focus:border-yellow-500 resize-none transition-colors"
                         />
+                      </div>
+
+                      {/* New Networking Keyword Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="networkingKeyword" className="text-white flex items-center gap-2">
+                          <Users className="w-4 h-4 text-purple-500" />
+                          Networking Interest (Optional)
+                        </Label>
+                        <Input
+                          id="networkingKeyword"
+                          value={formData.networkingKeyword}
+                          onChange={(e) => handleInputChange("networkingKeyword", e.target.value)}
+                          placeholder="e.g., entrepreneurship, AI, marketing, networking..."
+                          className="bg-black/50 border-purple-500/30 text-white placeholder:text-gray-400 focus:border-purple-500 transition-colors"
+                        />
+                        <p className="text-sm text-gray-500">
+                          Find relevant networking events and meetups in your area
+                        </p>
                       </div>
 
                       <Button

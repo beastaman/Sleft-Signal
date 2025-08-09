@@ -3,6 +3,7 @@ require('dotenv').config()
 // Debug: Check if environment variables are loaded
 console.log('🔍 Environment Check:')
 console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ Found' : '❌ Missing')
+console.log('APIFY_API_KEY:', process.env.APIFY_API_KEY ? '✅ Found' : '❌ Missing')
 console.log('PORT:', process.env.PORT || 3001)
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development')
 
@@ -11,6 +12,7 @@ const cors = require("cors")
 const { generateBrief } = require("./services/briefService")
 const { scrapeBusinessData } = require("./services/scraperService")
 const { getNewsData } = require("./services/newsService")
+const { getMeetupEvents } = require("./services/meetupService") // ADD THIS
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -33,7 +35,7 @@ app.get("/", (req, res) => {
     status: "Sleft Signals API is running!",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
-    features: ["AI Strategy Briefs", "Lead Generation", "Market Analysis", "Industry Intelligence"],
+    features: ["AI Strategy Briefs", "Lead Generation", "Market Analysis", "Industry Intelligence", "Networking Events"], // UPDATED
   })
 })
 
@@ -41,10 +43,10 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() })
 })
 
-// Main generation endpoint
+// Main generation endpoint - UPDATED TO INCLUDE MEETUP EVENTS
 app.post("/api/generate", async (req, res) => {
   try {
-    const { businessName, websiteUrl, industry, location, customGoal } = req.body
+    const { businessName, websiteUrl, industry, location, customGoal, networkingKeyword } = req.body // ADD networkingKeyword
 
     // Validate required fields
     if (!businessName || !websiteUrl || !industry || !location) {
@@ -55,23 +57,41 @@ app.post("/api/generate", async (req, res) => {
     }
 
     console.log(`🚀 Generating comprehensive brief for: ${businessName}`)
+    console.log(`🎯 Networking keyword: ${networkingKeyword || 'Not specified'}`)
 
-    // Step 1: Scrape business data and competitors with lead generation
-    console.log("📊 Phase 1: Market Intelligence & Lead Generation")
-    const businessData = await scrapeBusinessData({
-      businessName,
-      websiteUrl,
-      industry,
-      location,
-      competitorAnalysis: true,
-    })
+    // PARALLEL EXECUTION OF ALL SERVICES
+    console.log("📊 Phase 1: Parallel Data Collection")
+    const [businessData, newsData, meetupData] = await Promise.all([
+      // Phase 1: Market Intelligence & Lead Generation
+      scrapeBusinessData({
+        businessName,
+        websiteUrl,
+        industry,
+        location,
+        customGoal,
+        competitorAnalysis: true,
+      }),
+      
+      // Phase 2: Industry Intelligence Gathering
+      getNewsData(industry, location, businessName, customGoal),
+      
+      // Phase 3: Networking Events Collection - NEW!
+      getMeetupEvents({
+        networkingKeyword,
+        location,
+        industry,
+        businessName,
+        customGoal
+      })
+    ])
 
-    // Step 2: Get relevant news and industry intelligence
-    console.log("📰 Phase 2: Industry Intelligence Gathering")
-    const newsData = await getNewsData(industry, location)
+    console.log("📊 Data Collection Results:")
+    console.log(`  • Leads Generated: ${businessData.leads?.length || 0}`)
+    console.log(`  • News Articles: ${newsData.articles?.length || 0}`)
+    console.log(`  • Networking Events: ${meetupData.events?.length || 0}`) // NEW LOG
 
-    // Step 3: Generate AI-powered strategic brief
-    console.log("🧠 Phase 3: AI Strategy Brief Generation")
+    // Step 4: Generate AI-powered strategic brief with ALL data
+    console.log("🧠 Phase 4: AI Strategy Brief Generation")
     const brief = await generateBrief({
       businessName,
       websiteUrl,
@@ -80,12 +100,13 @@ app.post("/api/generate", async (req, res) => {
       customGoal,
       businessData,
       newsData,
+      meetupData // ADD THIS TO BRIEF GENERATION
     })
 
-    // Step 4: Generate unique ID and store enhanced data
+    // Step 5: Generate unique ID and store enhanced data
     const briefId = require("nanoid").nanoid(10)
 
-    // Enhanced data structure for storage
+    // Enhanced data structure for storage - UPDATED TO INCLUDE MEETUP DATA
     const enhancedBriefData = {
       id: briefId,
       businessName,
@@ -111,15 +132,29 @@ app.post("/api/generate", async (req, res) => {
             : 0,
         },
       },
+      meetupData: { // ADD THIS NEW SECTION
+        ...meetupData,
+        networkingMetrics: {
+          totalEvents: meetupData.events?.length || 0,
+          upcomingEvents: meetupData.events?.filter(event => new Date(event.date) > new Date()).length || 0,
+          averageNetworkingValue: meetupData.events?.length
+            ? Math.round(
+                meetupData.events.reduce((sum, event) => sum + (event.networkingValue || 0), 0) / meetupData.events.length
+              )
+            : 0,
+          keywordUsed: networkingKeyword || 'industry-based',
+        },
+      },
       createdAt: new Date().toISOString(),
       metadata: {
         industry,
         location,
         websiteUrl,
         customGoal,
+        networkingKeyword, // ADD THIS
         processingTime: Date.now(),
-        version: "2.0",
-        features: ["market-analysis", "lead-generation", "industry-intelligence", "ai-insights"],
+        version: "2.1", // UPDATED VERSION
+        features: ["market-analysis", "lead-generation", "industry-intelligence", "ai-insights", "networking-events"], // UPDATED
       },
     }
 
@@ -130,15 +165,17 @@ app.post("/api/generate", async (req, res) => {
     console.log(`✅ Comprehensive brief generated successfully for: ${businessName}`)
     console.log(`📈 Generated ${businessData.leads?.length || 0} high-quality leads`)
     console.log(`📰 Analyzed ${newsData.articles?.length || 0} industry articles`)
+    console.log(`🤝 Found ${meetupData.events?.length || 0} networking opportunities`) // NEW LOG
 
     res.json({
       success: true,
       briefId,
-      message: "Comprehensive strategic brief generated successfully",
+      message: "Comprehensive strategic brief with networking events generated successfully",
       summary: {
         competitorsAnalyzed: businessData.competitors?.length || 0,
         leadsGenerated: businessData.leads?.length || 0,
         newsArticles: newsData.articles?.length || 0,
+        networkingEvents: meetupData.events?.length || 0, // ADD THIS
         marketSaturation: businessData.marketAnalysis?.saturation || "Unknown",
       },
     })
@@ -151,6 +188,50 @@ app.post("/api/generate", async (req, res) => {
     })
   }
 })
+
+// NEW ENDPOINT: Get networking events separately
+app.post("/api/networking-events", async (req, res) => {
+  try {
+    const { networkingKeyword, location, industry, businessName } = req.body
+
+    if (!networkingKeyword && !industry) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        required: ["networkingKeyword or industry"],
+      })
+    }
+
+    console.log(`🤝 Fetching networking events for keyword: ${networkingKeyword || industry}`)
+
+    const meetupData = await getMeetupEvents({
+      networkingKeyword,
+      location,
+      industry,
+      businessName,
+    })
+
+    res.json({
+      success: true,
+      events: meetupData.events || [],
+      summary: {
+        totalEvents: meetupData.events?.length || 0,
+        upcomingEvents: meetupData.events?.filter(event => new Date(event.date) > new Date()).length || 0,
+        eventTypes: [...new Set(meetupData.events?.map(e => e.type) || [])],
+        locations: [...new Set(meetupData.events?.map(e => e.address?.split(',')[0]) || [])],
+      },
+      metadata: meetupData.metadata || {}
+    })
+  } catch (error) {
+    console.error("❌ Error fetching networking events:", error)
+    res.status(500).json({
+      error: "Failed to fetch networking events",
+      message: error.message,
+    })
+  }
+})
+
+// Update the briefService.js to handle meetup data - ADD THIS NOTE
+// You'll also need to update briefService.js to include meetup data in the AI brief generation
 
 // Get brief by ID with enhanced data
 app.get("/api/briefs/:id", (req, res) => {
@@ -284,6 +365,7 @@ app.use((req, res) => {
       "POST /api/generate",
       "GET /api/briefs/:id",
       "POST /api/leads",
+      "POST /api/networking-events", // NEW ENDPOINT
       "GET /api/intelligence/:industry",
     ],
   })
@@ -293,7 +375,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Sleft Signals API Server running on port ${PORT}`)
   console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`)
   console.log(`🌐 CORS enabled for: ${process.env.FRONTEND_URL || "http://localhost:3000"}`)
-  console.log(`✨ Features: AI Strategy Briefs | Lead Generation | Market Analysis | Industry Intelligence`)
+  console.log(`✨ Features: AI Strategy Briefs | Lead Generation | Market Analysis | Industry Intelligence | Networking Events`)
 })
 
 module.exports = app
