@@ -38,23 +38,23 @@ async function getNewsData(industry, location, businessName = "", customGoal = "
 
     const newsResults = []
 
-    // Primary news scraper with enhanced configuration
+    // Updated news scraper with correct actor ID
     try {
-      for (const queryData of searchQueries.slice(0, 3)) { // Limit to 3 queries to save quota
+      for (const queryData of searchQueries.slice(0, 3)) {
         console.log(`📊 Executing ${queryData.type} search: ${queryData.query}`)
         
         const input = {
           query: queryData.query,
-          language: "US:en",
+          language: "en",
+          country: "us",
           maxItems: queryData.maxItems || 6,
-          fetchArticleDetails: true, // ALWAYS TRUE to get real URLs
-          proxyConfiguration: { useApifyProxy: true },
           dateFrom: queryData.dateFrom || getDateDaysAgo(30),
           dateTo: new Date().toISOString().split('T')[0],
         }
 
+        // UPDATED: Use the working Google News actor
         const run = await client.actor("lhotanova/google-news-scraper").call(input, {
-          timeout: 90000,
+          timeout: 120000, // Increased timeout
         })
         
         const { items } = await client.dataset(run.defaultDatasetId).listItems()
@@ -62,21 +62,15 @@ async function getNewsData(industry, location, businessName = "", customGoal = "
         if (items && items.length > 0) {
           console.log(`📄 Raw items received:`, items.length)
           
-          // Log URL types for debugging
-          items.slice(0, 3).forEach((item, i) => {
-            console.log(`📋 Item ${i + 1} URLs:`)
-            console.log(`  - loadedUrl: ${item.loadedUrl || 'N/A'}`)
-            console.log(`  - link: ${item.link || 'N/A'}`)
-            console.log(`  - rssLink: ${item.rssLink || 'N/A'}`)
-          })
+          // Log first item structure for debugging
+          console.log(`📋 Sample item structure:`, JSON.stringify(items[0], null, 2))
 
           const processedArticles = items
-            .filter(item => item.title && item.title.length > 10) // Remove URL requirement for filtering
+            .filter(item => item.title && item.title.length > 10)
             .slice(0, queryData.maxItems || 6)
             .map((article) => processPersonalizedArticle(article, industry, location, businessName, customGoal, queryData.type))
             .filter(article => article.relevanceScore >= 20)
 
-          // Tag articles with search context
           processedArticles.forEach(article => {
             article.searchContext = queryData.type
             article.personalizedFor = businessName || `${industry} business`
@@ -84,20 +78,24 @@ async function getNewsData(industry, location, businessName = "", customGoal = "
 
           newsResults.push(...processedArticles)
           console.log(`✅ Found ${processedArticles.length} relevant articles for ${queryData.type} search`)
-          console.log(`📊 URL types: Direct: ${processedArticles.filter(a => !a.isRssLink).length}, RSS: ${processedArticles.filter(a => a.isRssLink).length}`)
           
           dailyNewsUsage++
           
-          // Break if we have enough results
           if (newsResults.length >= 12) break
         }
         
-        // Small delay between queries
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 2000))
       }
       
     } catch (scraperError) {
       console.warn(`⚠️ News scraper failed:`, scraperError.message)
+      
+      // Check if it's the trial expired error
+      if (scraperError.message.includes('free trial has expired') || scraperError.message.includes('must rent a paid Actor')) {
+        console.warn(`📰 Google News Scraper trial expired. Using enhanced mock data.`)
+        return generatePersonalizedMockNews(industry, location, businessName, customGoal)
+      }
+      
       dailyNewsUsage++
     }
 
@@ -107,13 +105,11 @@ async function getNewsData(industry, location, businessName = "", customGoal = "
       return generatePersonalizedMockNews(industry, location, businessName, customGoal)
     }
 
-    // Enhanced sorting by relevance, personalization, and recency
+    // Enhanced sorting and processing...
     newsResults.sort((a, b) => {
-      // Prioritize direct URLs over RSS links
       if (!a.isRssLink && b.isRssLink) return -1
       if (a.isRssLink && !b.isRssLink) return 1
       
-      // Primary: Personalization score
       const personalizedScoreA = calculatePersonalizationScore(a, industry, businessName, customGoal)
       const personalizedScoreB = calculatePersonalizationScore(b, industry, businessName, customGoal)
       
@@ -121,21 +117,17 @@ async function getNewsData(industry, location, businessName = "", customGoal = "
         return personalizedScoreB - personalizedScoreA
       }
       
-      // Secondary: Relevance score
       if (a.relevanceScore !== b.relevanceScore) {
         return b.relevanceScore - a.relevanceScore
       }
       
-      // Tertiary: Recency
       return getRecencyBonus(b.published) - getRecencyBonus(a.published)
     })
 
-    // Group by category and limit results
     const finalArticles = newsResults.slice(0, 10)
     const categorizedNews = groupPersonalizedNews(finalArticles, industry)
 
     console.log(`✅ Successfully processed ${finalArticles.length} personalized industry intelligence articles`)
-    console.log(`🔗 Direct URLs: ${finalArticles.filter(a => !a.isRssLink).length}, RSS URLs: ${finalArticles.filter(a => a.isRssLink).length}`)
     
     return {
       articles: finalArticles,

@@ -166,6 +166,9 @@ function buildDetailedMarketContext(businessData, location, industry) {
   const totalReviews = marketAnalysis.totalReviews || 0
   const saturation = marketAnalysis.saturation || "Unknown"
   
+  // FIX: Convert avgRating to number if it's a string
+  const avgRatingNum = typeof avgRating === 'string' ? parseFloat(avgRating) : avgRating || 0
+  
   // Calculate market metrics
   const ratingDistribution = calculateRatingDistribution(businessData.competitors || [])
   const priceAnalysis = analyzePriceDistribution(businessData.competitors || [])
@@ -177,7 +180,7 @@ function buildDetailedMarketContext(businessData, location, industry) {
 MARKET OVERVIEW:
 • Market Saturation: ${saturation} (${getSaturationDescription(saturation)})
 • Total Competitors Analyzed: ${competitorCount}
-• Market Average Rating: ${avgRating.toFixed(1)}/5.0 stars
+• Market Average Rating: ${avgRatingNum.toFixed(1)}/5.0 stars
 • Total Market Reviews: ${totalReviews.toLocaleString()}
 • Dominant Service Categories: ${getTopCategories(businessData.competitors || []).join(', ')}
 
@@ -185,7 +188,7 @@ COMPETITIVE METRICS:
 • Rating Distribution: ${ratingDistribution.excellent}% excellent (4.5+★), ${ratingDistribution.good}% good (4.0-4.4★), ${ratingDistribution.poor}% poor (<4.0★)
 • Price Analysis: ${priceAnalysis.range} | Average: ${priceAnalysis.average}
 • Digital Presence: ${digitalPresence.withWebsite}% have websites, ${digitalPresence.withPhone}% list phone numbers
-• Review Engagement: Average ${Math.round(totalReviews / competitorCount)} reviews per competitor
+• Review Engagement: Average ${Math.round(totalReviews / (competitorCount || 1))} reviews per competitor
 
 MARKET OPPORTUNITY SCORE: ${calculateMarketOpportunity(businessData)}/100
 ${getMarketOpportunityInsights(businessData, location, industry)}`
@@ -334,7 +337,7 @@ function calculateMarketOpportunity(businessData) {
   
   const competitors = businessData.competitors || []
   const avgRating = businessData.marketAnalysis?.averageRating || 4.0
-  const saturation = businessData.marketAnalysis?.saturation || "Medium"
+  const saturation = businessData.marketAnalysis?.saturation || "Unknown"
   
   // Market saturation impact
   if (saturation === "Low") score += 30

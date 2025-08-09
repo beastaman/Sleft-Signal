@@ -39,7 +39,7 @@ import {
   CheckCircle,
   Newspaper,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react" // ADD useEffect
 import Image from "next/image"
 
 interface Lead {
@@ -54,7 +54,6 @@ interface Lead {
   category: string
   leadScore: number
   leadType: string
-  potentialValue: number
   contactReason: string
   priceLevel?: string
   openingHours?: any[]
@@ -92,7 +91,7 @@ interface MeetupEvent {
   actualAttendees: number
   relevanceScore: number
   category: string
-  networkingValue: number
+  // networkingValue: number
   personalizedReason: string
   actionableSteps: string[]
 }
@@ -165,6 +164,13 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
   const [selectedLeadType, setSelectedLeadType] = useState<string>("all")
   const [selectedNewsCategory, setSelectedNewsCategory] = useState<string>("all")
   const [selectedEventCategory, setSelectedEventCategory] = useState<string>("all")
+  
+  // ADD: Client-side date formatting to fix hydration
+  const [formattedDate, setFormattedDate] = useState<string>('')
+  
+  useEffect(() => {
+    setFormattedDate(new Date(brief.createdAt).toLocaleDateString())
+  }, [brief.createdAt])
 
   const handleJoinEliteNetwork = () => {
     router.push('/auth')
@@ -362,7 +368,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
             </Badge>
             <Badge variant="outline" className="border-gray-700 text-gray-300 px-6 py-3 text-base">
               <Calendar className="w-5 h-5 mr-2" />
-              {new Date(brief.createdAt).toLocaleDateString()}
+              {formattedDate || 'Loading...'}
             </Badge>
             {brief.businessData && (
               <Badge variant="outline" className="border-yellow-500/40 text-yellow-500 px-6 py-3 text-base">
@@ -542,56 +548,49 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                           transition={{ duration: 0.6, delay: index * 0.1 }}
                           className="border border-gray-700 rounded-3xl p-8 bg-gradient-to-r from-gray-800/50 to-gray-900/50 hover:border-green-500/30 transition-all duration-300 group"
                         >
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="flex items-start gap-6 flex-1">
-                              {lead.imageUrl && (
-                                <div className="w-20 h-20 rounded-2xl overflow-hidden border border-gray-600">
-                                  <Image
-                                    src={lead.imageUrl || "/placeholder.svg"}
-                                    alt={lead.businessName}
-                                    width={80}
-                                    height={80}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              )}
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <h4 className="font-bold text-white text-2xl">{lead.businessName}</h4>
-                                  <Badge
-                                    className={`px-3 py-1 text-sm font-semibold border ${getLeadScoreColor(lead.leadScore)}`}
-                                  >
-                                    {lead.leadScore}/100
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-4 mb-3">
-                                  <Badge variant="outline" className="border-blue-500/40 text-blue-400 bg-blue-500/10">
-                                    {lead.leadType}
-                                  </Badge>
-                                  <Badge
-                                    variant="outline"
-                                    className="border-purple-500/40 text-purple-400 bg-purple-500/10"
-                                  >
-                                    {lead.category}
-                                  </Badge>
-                                  <div className="flex items-center gap-1">
-                                    <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                                    <span className="text-yellow-500 font-bold">{lead.rating}</span>
-                                    <span className="text-gray-400 text-sm">({lead.reviewsCount} reviews)</span>
-                                  </div>
-                                </div>
-                                <p className="text-gray-400 text-sm mb-4 flex items-center gap-2">
-                                  <MapPin className="w-4 h-4" />
-                                  {lead.address}
-                                </p>
-                                <p className="text-gray-300 leading-relaxed mb-4">{lead.contactReason}</p>
+                          {/* UPDATED LAYOUT WITHOUT POTENTIAL VALUE */}
+                          <div className="flex items-start gap-6 mb-6">
+                            {lead.imageUrl && (
+                              <div className="w-20 h-20 rounded-2xl overflow-hidden border border-gray-600">
+                                <Image
+                                  src={lead.imageUrl || "/placeholder.svg"}
+                                  alt={lead.businessName}
+                                  width={80}
+                                  height={80}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-3xl font-bold text-green-500 mb-2">
-                                ${lead.potentialValue.toLocaleString()}
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h4 className="font-bold text-white text-2xl">{lead.businessName}</h4>
+                                <Badge
+                                  className={`px-3 py-1 text-sm font-semibold border ${getLeadScoreColor(lead.leadScore)}`}
+                                >
+                                  {lead.leadScore}/100
+                                </Badge>
                               </div>
-                              <p className="text-gray-400 text-sm">Potential Value</p>
+                              <div className="flex items-center gap-4 mb-3">
+                                <Badge variant="outline" className="border-blue-500/40 text-blue-400 bg-blue-500/10">
+                                  {lead.leadType}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className="border-purple-500/40 text-purple-400 bg-purple-500/10"
+                                >
+                                  {lead.category}
+                                </Badge>
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                                  <span className="text-yellow-500 font-bold">{lead.rating}</span>
+                                  <span className="text-gray-400 text-sm">({lead.reviewsCount} reviews)</span>
+                                </div>
+                              </div>
+                              <p className="text-gray-400 text-sm mb-4 flex items-center gap-2">
+                                <MapPin className="w-4 h-4" />
+                                {lead.address}
+                              </p>
+                              <p className="text-gray-300 leading-relaxed mb-4">{lead.contactReason}</p>
                             </div>
                           </div>
 
@@ -672,7 +671,7 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                             </Button>
                           </div>
 
-                          {/* ADD ADDITIONAL INFO SECTION */}
+                          {/* Additional info section remains the same */}
                           {(lead.priceLevel || lead.openingHours || lead.neighborhood) && (
                             <>
                               <Separator className="my-6 bg-gray-700" />
@@ -1227,12 +1226,12 @@ export default function BriefDisplay({ brief }: BriefDisplayProps) {
                                       </Badge>
                                     </div>
                                   </div>
-                                  <div className="text-right">
+                                  {/* <div className="text-right">
                                     <div className="text-2xl font-bold text-purple-500 mb-1">
                                       ${event.networkingValue.toLocaleString()}
                                     </div>
                                     <p className="text-gray-400 text-sm">Networking Value</p>
-                                  </div>
+                                  </div> */}
                                 </div>
 
                                 <p className="text-gray-300 mb-6 leading-relaxed">{event.description}</p>

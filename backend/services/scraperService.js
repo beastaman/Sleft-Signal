@@ -13,8 +13,8 @@ async function scrapeBusinessData({ businessName, websiteUrl, industry, location
   try {
     // Check daily usage limit
     if (dailyUsage >= DAILY_LIMIT) {
-      console.warn(`⚠️ Daily API limit reached (${DAILY_LIMIT}). Returning personalized mock data.`)
-      return generatePersonalizedMockData({ businessName, websiteUrl, industry, location, customGoal })
+      console.warn(`⚠️ Daily API limit reached (${DAILY_LIMIT}). Returning basic data structure.`)
+      return generateBasicDataStructure({ businessName, websiteUrl, industry, location, customGoal })
     }
 
     console.log(`🎯 Generating hyper-personalized leads for: ${businessName}`)
@@ -100,7 +100,7 @@ async function scrapeBusinessData({ businessName, websiteUrl, industry, location
   } catch (error) {
     console.error("❌ Scraping Error:", error)
     dailyUsage++
-    return generatePersonalizedMockData({ businessName, websiteUrl, industry, location, customGoal })
+    return generateBasicDataStructure({ businessName, websiteUrl, industry, location, customGoal })
   }
 }
 
@@ -197,23 +197,6 @@ function generatePersonalizedSearchStrategies({ businessName, websiteUrl, indust
         description: "Find businesses aligned with custom goals"
       })
     }
-  }
-
-  // Strategy 5: Market Expansion Opportunities
-  if (location.isUrban) {
-    strategies.push({
-      type: "market_expansion",
-      searchTerms: [
-        `business services ${location.city}`,
-        `consulting ${location.city}`,
-        `${industry} franchise ${location.city}`,
-        `business development ${location.city}`
-      ],
-      locationQuery: location.fullLocation,
-      maxResults: 12,
-      relevanceWeight: 0.6,
-      description: "Find market expansion opportunities"
-    })
   }
 
   return strategies
@@ -321,7 +304,7 @@ function processPersonalizedData(allResults, userProfile) {
     dataQuality: {
       timestamp: new Date().toISOString(),
       sourceCount: uniqueResults.length,
-      processingMethod: "hyper_personalized_scraping",
+      processingMethod: "real_time_scraping",
       userProfile: {
         industry,
         location: location.fullLocation,
@@ -345,20 +328,20 @@ function processPersonalizedData(allResults, userProfile) {
       rating: item.totalScore || 0,
       reviewsCount: item.reviewsCount || 0,
       category: item.categoryName || industry,
-      website: cleanAndValidateWebsiteUrl(item.website), // IMPROVED URL HANDLING
+      website: cleanAndValidateWebsiteUrl(item.website),
       phone: item.phone || item.phoneUnformatted || null,
       location: item.location || null,
       priceLevel: item.price || null,
       openingHours: item.openingHours || null,
       imageUrl: item.imageUrl || null,
       placeId: item.placeId || null,
-      googleMapsUrl: item.url || generateGoogleMapsUrl(item), // ADD GOOGLE MAPS URL
+      googleMapsUrl: item.url || generateGoogleMapsUrl(item),
       competitorType: "Direct Competitor",
       neighborhood: item.neighborhood || null,
       additionalInfo: item.additionalInfo || null
     }))
 
-  // Generate hyper-personalized leads
+  // Generate hyper-personalized leads WITHOUT potentialValue
   const potentialLeads = uniqueResults
     .filter(item => 
       item.totalScore >= 3.0 &&
@@ -375,15 +358,14 @@ function processPersonalizedData(allResults, userProfile) {
         businessName: item.title,
         contactPerson: generateContactPerson(item, leadType),
         email: generateBusinessEmail(item),
-        phone: item.phone || item.phoneUnformatted || null, // Use both phone fields
-        website: cleanAndValidateWebsiteUrl(item.website), // IMPROVED URL HANDLING
+        phone: item.phone || item.phoneUnformatted || null,
+        website: cleanAndValidateWebsiteUrl(item.website),
         address: item.address || "Address not available",
         rating: item.totalScore || 0,
         reviewsCount: item.reviewsCount || 0,
         category: item.categoryName || industry,
         leadScore,
         leadType,
-        potentialValue: estimatePersonalizedValue(item, userProfile),
         contactReason: generatePersonalizedContactReason(item, userProfile),
         personalizationScore,
         matchReason: generateMatchReason(item, userProfile),
@@ -393,9 +375,8 @@ function processPersonalizedData(allResults, userProfile) {
         priority: calculatePersonalizedPriority(item, userProfile),
         searchStrategy: item.searchStrategy || "general",
         lastUpdated: new Date().toISOString(),
-        // ADD ADDITIONAL GOOGLE MAPS DATA
         placeId: item.placeId || null,
-        googleMapsUrl: item.url || generateGoogleMapsUrl(item), // Direct Google Maps URL
+        googleMapsUrl: item.url || generateGoogleMapsUrl(item),
         priceLevel: item.price || null,
         openingHours: item.openingHours || null,
         additionalInfo: item.additionalInfo || null,
@@ -921,224 +902,39 @@ function analyzePersonalizedCategories(results, userProfile) {
     .map(([category, count]) => ({ category, count }))
 }
 
-function generatePersonalizedMockData({ businessName, websiteUrl, industry, location, customGoal }) {
-  console.log("🎭 Generating hyper-personalized mock business data...")
+// BASIC DATA STRUCTURE WHEN QUOTA IS REACHED OR ERROR OCCURS
+function generateBasicDataStructure({ businessName, websiteUrl, industry, location, customGoal }) {
+  console.log("📊 Generating basic data structure (no API quota used)")
   
   const locationData = parseLocation(location)
   
-  // Create personalized mock leads based on user inputs
-  const personalizedLeads = [
-    {
-      businessName: `${locationData.city} ${industry} Alliance`,
-      contactPerson: "Partnership Director",
-      email: `partnerships@${locationData.city.toLowerCase().replace(/\s+/g, '')}alliance.com`,
-      phone: "(555) 123-4567",
-      website: `https://${locationData.city.toLowerCase().replace(/\s+/g, '')}alliance.com`,
-      address: `123 Business Park Dr, ${locationData.city}, ${locationData.state || 'State'}`,
-      rating: 4.7,
-      reviewsCount: 89,
-      category: "Strategic Partnership",
-      leadScore: 95,
-      leadType: "Strategic Alliance",
-      potentialValue: estimatePersonalizedValue({ totalScore: 4.7, reviewsCount: 89, website: true, phone: true }, { industry }),
-      contactReason: `Explore strategic alliance opportunities between ${businessName} and ${locationData.city} ${industry} Alliance, focusing on mutual referrals and market expansion in ${locationData.city}`,
-      personalizationScore: 92,
-      matchReason: `Located in ${locationData.city} • Complementary to ${industry} • Excellent reputation (4.7 stars) • Strong partnership focus`,
-      actionableSteps: [
-        `Research their partnership programs and recent collaborations`,
-        `Prepare a partnership proposal highlighting ${businessName}'s unique value`,
-        `Schedule a partnership discussion meeting within the next week`
-      ],
-      imageUrl: null,
-      location: null,
-      priority: 9,
-      searchStrategy: "strategic_partners",
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      businessName: `Premium ${industry} Solutions ${locationData.city}`,
-      contactPerson: "Business Development Manager",
-      email: `bd@premium${industry.toLowerCase().replace(/\s+/g, '')}solutions.com`,
-      phone: "(555) 234-5678",
-      website: `https://premium${industry.toLowerCase().replace(/\s+/g, '')}solutions.com`,
-      address: `456 Innovation Blvd, ${locationData.city}, ${locationData.state || 'State'}`,
-      rating: 4.5,
-      reviewsCount: 124,
-      category: "Supplier",
-      leadScore: 91,
-      leadType: "Preferred Supplier",
-      potentialValue: estimatePersonalizedValue({ totalScore: 4.5, reviewsCount: 124, website: true, phone: true }, { industry }),
-      contactReason: `Evaluate Premium ${industry} Solutions as a preferred supplier for ${businessName}, focusing on quality products and competitive pricing in the ${locationData.city} market`,
-      personalizationScore: 88,
-      matchReason: `Located in ${locationData.city} • Specialized in ${industry} • Strong digital presence • High customer satisfaction`,
-      actionableSteps: [
-        `Review their product catalog and pricing structure`,
-        `Contact ${generateBusinessEmail({ website: `https://premium${industry.toLowerCase().replace(/\s+/g, '')}solutions.com` })} for supplier inquiry`,
-        `Request samples and negotiate volume pricing for ${businessName}`
-      ],
-      imageUrl: null,
-      location: null,
-      priority: 8,
-      searchStrategy: "potential_customers",
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      businessName: customGoal ? `${locationData.city} Growth Consulting` : `Elite ${industry} Network`,
-      contactPerson: customGoal ? "Growth Strategy Consultant" : "Network Coordinator",
-      email: customGoal ? `growth@${locationData.city.toLowerCase().replace(/\s+/g, '')}consulting.com` : `network@elite${industry.toLowerCase().replace(/\s+/g, '')}.com`,
-      phone: "(555) 345-6789",
-      website: customGoal ? `https://${locationData.city.toLowerCase().replace(/\s+/g, '')}consulting.com` : `https://elite${industry.toLowerCase().replace(/\s+/g, '')}.com`,
-      address: `789 Success Street, ${locationData.city}, ${locationData.state || 'State'}`,
-      rating: 4.8,
-      reviewsCount: 67,
-      category: customGoal ? "Business Consulting" : industry,
-      leadScore: 93,
-      leadType: customGoal ? "Business Advisor" : "Industry Peer",
-      potentialValue: estimatePersonalizedValue({ totalScore: 4.8, reviewsCount: 67, website: true, phone: true }, { industry }),
-      contactReason: customGoal ? 
-        `Explore consulting services from ${locationData.city} Growth Consulting to help ${businessName} achieve your goal: "${customGoal.substring(0, 50)}..."` :
-        `Connect with Elite ${industry} Network for industry insights and networking opportunities in ${locationData.city}`,
-      personalizationScore: customGoal ? 95 : 85,
-      matchReason: customGoal ? 
-        `Located in ${locationData.city} • Aligns with your business goals • Excellent reputation (4.8 stars)` :
-        `Located in ${locationData.city} • Industry expertise in ${industry} • Excellent reputation (4.8 stars)`,
-      actionableSteps: customGoal ? [
-        `Research their consulting approach and success stories`,
-        `Schedule a consultation to discuss your specific goals`,
-        `Prepare detailed information about ${businessName}'s current challenges`
-      ] : [
-        `Join their network and attend upcoming events`,
-        `Connect with other ${industry} professionals through their platform`,
-        `Share ${businessName}'s expertise to build relationships`
-      ],
-      imageUrl: null,
-      location: null,
-      priority: customGoal ? 10 : 7,
-      searchStrategy: customGoal ? "custom_goal_based" : "direct_competitors",
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      businessName: `${locationData.city} Business Technology Hub`,
-      contactPerson: "Solutions Architect",
-      email: `solutions@${locationData.city.toLowerCase().replace(/\s+/g, '')}techub.com`,
-      phone: "(555) 456-7890",
-      website: `https://${locationData.city.toLowerCase().replace(/\s+/g, '')}techub.com`,
-      address: `321 Tech Park Way, ${locationData.city}, ${locationData.state || 'State'}`,
-      rating: 4.6,
-      reviewsCount: 98,
-      category: "Technology Services",
-      leadScore: 89,
-      leadType: "Technology Partner",
-      potentialValue: estimatePersonalizedValue({ totalScore: 4.6, reviewsCount: 98, website: true, phone: true }, { industry }),
-      contactReason: `Assess technology solutions from ${locationData.city} Business Technology Hub that could streamline ${businessName}'s operations and improve efficiency in the ${industry} sector`,
-      personalizationScore: 86,
-      matchReason: `Located in ${locationData.city} • Technology solutions for ${industry} • Strong digital presence • Proven track record`,
-      actionableSteps: [
-        `Review their technology offerings relevant to ${industry}`,
-        `Schedule a technology assessment for ${businessName}`,
-        `Discuss automation and efficiency improvements specific to your business`
-      ],
-      imageUrl: null,
-      location: null,
-      priority: 8,
-      searchStrategy: "strategic_partners",
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      businessName: `${locationData.city} Marketing Collective`,
-      contactPerson: "Marketing Director",
-      email: `director@${locationData.city.toLowerCase().replace(/\s+/g, '')}marketing.com`,
-      phone: "(555) 567-8901",
-      website: `https://${locationData.city.toLowerCase().replace(/\s+/g, '')}marketing.com`,
-      address: `654 Creative Ave, ${locationData.city}, ${locationData.state || 'State'}`,
-      rating: 4.4,
-      reviewsCount: 156,
-      category: "Marketing Services",
-      leadScore: 87,
-      leadType: "Marketing Partner",
-      potentialValue: estimatePersonalizedValue({ totalScore: 4.4, reviewsCount: 156, website: true, phone: true }, { industry }),
-      contactReason: `Investigate cross-promotional opportunities and marketing collaboration between ${businessName} and ${locationData.city} Marketing Collective to expand reach in the ${locationData.city} ${industry} market`,
-      personalizationScore: 84,
-      matchReason: `Located in ${locationData.city} • Specialized in local business marketing • Strong client base • Collaborative approach`,
-      actionableSteps: [
-        `Review their portfolio of ${industry} marketing campaigns`,
-        `Discuss joint marketing initiatives and cross-promotion opportunities`,
-        `Explore co-branded content and event collaboration possibilities`
-      ],
-      imageUrl: null,
-      location: null,
-      priority: 7,
-      searchStrategy: "market_expansion",
-      lastUpdated: new Date().toISOString()
-    }
-  ]
-
   return {
-    totalPlaces: 25,
-    competitors: [
-      {
-        title: `Top ${industry} Competitor ${locationData.city}`,
-        address: `888 Market St, ${locationData.city}, ${locationData.state || 'State'}`,
-        rating: 4.3,
-        reviewsCount: 245,
-        category: industry,
-        website: `https://top${industry.toLowerCase().replace(/\s+/g, '')}competitor.com`,
-        phone: "(555) 888-9999",
-        location: null,
-        priceLevel: "$$$",
-        openingHours: null,
-        imageUrl: null,
-        placeId: "mock_competitor_1",
-        competitorType: "Direct Competitor"
-      },
-      {
-        title: `Leading ${industry} Solutions ${locationData.city}`,
-        address: `999 Commerce Dr, ${locationData.city}, ${locationData.state || 'State'}`,
-        rating: 4.1,
-        reviewsCount: 189,
-        category: industry,
-        website: `https://leading${industry.toLowerCase().replace(/\s+/g, '')}solutions.com`,
-        phone: "(555) 999-0000",
-        location: null,
-        priceLevel: "$$",
-        openingHours: null,
-        imageUrl: null,
-        placeId: "mock_competitor_2",
-        competitorType: "Direct Competitor"
-      }
-    ],
-    leads: personalizedLeads,
+    totalPlaces: 0,
+    competitors: [],
+    leads: [],
     marketAnalysis: {
-      averageRating: "4.5",
-      totalReviews: 1890,
-      saturation: calculatePersonalizedSaturation([], { industry }),
-      priceRange: "$$",
-      topCategories: [
-        { category: industry, count: 12 },
-        { category: "Business Services", count: 8 },
-        { category: "Professional Services", count: 5 },
-        { category: "Technology", count: 4 },
-        { category: "Marketing", count: 3 }
-      ],
+      averageRating: "0",
+      totalReviews: 0,
+      saturation: "Unknown",
+      priceRange: "Unknown",
+      topCategories: [],
       personalizedInsights: {
-        marketOpportunity: `Based on your ${industry} business in ${locationData.city}, we identified 25 high-potential business opportunities`,
-        competitiveLandscape: `The ${locationData.city} market shows medium saturation for ${industry} with strong partnership opportunities`,
-        topRecommendation: customGoal ? 
-          "Focus on goal-aligned partnerships and consulting services for accelerated growth" :
-          "Prioritize strategic alliances and technology partnerships for competitive advantage",
-        actionableAdvice: `Leverage ${locationData.city}'s business ecosystem by building relationships with complementary service providers and potential strategic partners`
+        marketOpportunity: `Market analysis for ${industry} business in ${locationData.city} is pending data collection`,
+        competitiveLandscape: `The local market analysis for ${industry} requires additional data`,
+        topRecommendation: "Focus on building strategic partnerships and networking in your local market",
+        actionableAdvice: `Connect with local businesses in ${locationData.city} to explore collaboration opportunities`
       }
     },
     dataQuality: {
       timestamp: new Date().toISOString(),
-      sourceCount: 25,
-      processingMethod: "hyper_personalized_mock_data",
+      sourceCount: 0,
+      processingMethod: "basic_structure_only",
       userProfile: {
         businessName,
         industry,
         location: locationData.fullLocation,
         hasCustomGoal: !!customGoal,
-        personalizationLevel: "Maximum"
+        note: "Limited data due to quota restrictions"
       }
     }
   }
