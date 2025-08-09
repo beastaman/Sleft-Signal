@@ -319,7 +319,7 @@ export default function GeneratePage() {
                       <div className="space-y-2">
                         <Label htmlFor="customGoal" className="text-white flex items-center gap-2">
                           <Rocket className="w-4 h-4 text-yellow-500" />
-                          Custom Goal or Comment (Optional)
+                          Custom Goal or Comment 
                         </Label>
                         <Textarea
                           id="customGoal"
@@ -335,7 +335,7 @@ export default function GeneratePage() {
                       <div className="space-y-2">
                         <Label htmlFor="networkingKeyword" className="text-white flex items-center gap-2">
                           <Users className="w-4 h-4 text-purple-500" />
-                          Networking Interest (Optional)
+                          Networking Interest 
                         </Label>
                         <Input
                           id="networkingKeyword"
